@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  TESTER
+  CLIENT
+  MANAGER
+}
+
+model User {
+  id              String          @id @default(cuid())
+  email           String          @unique
+  name            String
+  role            UserRole
+  passwordHash    String
+  avatarUrl       String?
+  bio              String?
+  skills           Json            @default("[]")
+  testerReputation Int             @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  assignments      TestAssignment[]
+  projects         Project[]       @relation("ProjectOwner")
+  bugReports       BugReport[]
+  bugComments      BugComment[]
+  payouts          Payout[]
+}
+
+model Project {
+  id             String          @id @default(cuid())
+  name           String
+  description    String
+  status         String
+  owner          User            @relation("ProjectOwner", fields: [ownerId], references: [id])
+  ownerId        String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  testCycles     TestCycle[]
+}
+
+model TestCycle {
+  id             String          @id @default(cuid())
+  name           String
+  scope          String
+  status         String
+  startDate      DateTime
+  endDate        DateTime?
+  project        Project         @relation(fields: [projectId], references: [id])
+  projectId      String
+  assignments    TestAssignment[]
+  issues         BugReport[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model TestAssignment {
+  id             String      @id @default(cuid())
+  tester         User        @relation(fields: [testerId], references: [id])
+  testerId       String
+  testCycle      TestCycle   @relation(fields: [testCycleId], references: [id])
+  testCycleId    String
+  status         String      @default("ASSIGNED")
+  notes          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model BugReport {
+  id             String      @id @default(cuid())
+  title          String
+  severity       String
+  stepsToReproduce String
+  expectedResult String
+  actualResult   String
+  environment    String
+  status         String      @default("OPEN")
+  attachments    Json            @default("[]")
+  reporter       User        @relation(fields: [reporterId], references: [id])
+  reporterId     String
+  testCycle      TestCycle   @relation(fields: [testCycleId], references: [id])
+  testCycleId    String
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  comments       BugComment[]
+}
+
+model BugComment {
+  id             String      @id @default(cuid())
+  content        String
+  author         User        @relation(fields: [authorId], references: [id])
+  authorId       String
+  bugReport      BugReport   @relation(fields: [bugReportId], references: [id])
+  bugReportId    String
+  createdAt      DateTime    @default(now())
+}
+
+model Payout {
+  id             String      @id @default(cuid())
+  tester         User        @relation(fields: [testerId], references: [id])
+  testerId       String
+  amount         Float
+  currency       String       @default("USD")
+  status         String       @default("PENDING")
+  paidAt         DateTime?
+  createdAt      DateTime     @default(now())
+}
